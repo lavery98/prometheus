@@ -1,4 +1,5 @@
 local grafana = import 'github.com/grafana/grafonnet-lib/grafonnet/grafana.libsonnet';
+local grafonnet = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonnet';
 local g = import 'github.com/grafana/jsonnet-libs/grafana-builder/grafana.libsonnet';
 local dashboard = grafana.dashboard;
 local row = grafana.row;
@@ -7,152 +8,374 @@ local prometheus = grafana.prometheus;
 local graphPanel = grafana.graphPanel;
 local tablePanel = grafana.tablePanel;
 local template = grafana.template;
+
+local grafonnetDashboard = grafonnet.dashboard;
+local grafonnetRow = grafonnet.panel.row;
+local grafonnetVariable = grafonnetDashboard.variable;
+local grafonnetGrid = grafonnet.util.grid;
+local grafonnetTable = grafonnet.panel.table;
+local grafonnetPrometheus = grafonnet.query.prometheus;
+local grafonnetTimeSeries = grafonnet.panel.timeSeries;
+
 {
   grafanaDashboards+:: {
     'prometheus.json':
       local showMultiCluster = $._config.showMultiCluster;
-      local dashboard = g.dashboard(
+
+      grafonnetDashboard.new(
         '%(prefix)sOverview' % $._config.grafanaPrometheus
-      );
-      local templatedDashboard = if showMultiCluster then
-        dashboard
-        .addMultiTemplate('cluster', 'prometheus_build_info{%(prometheusSelector)s}' % $._config, $._config.clusterLabel)
-        .addMultiTemplate('job', 'prometheus_build_info{cluster=~"$cluster"}', 'job')
-        .addMultiTemplate('instance', 'prometheus_build_info{cluster=~"$cluster", job=~"$job"}', 'instance')
-      else
-        dashboard
-        .addMultiTemplate('job', 'prometheus_build_info{%(prometheusSelector)s}' % $._config, 'job')
-        .addMultiTemplate('instance', 'prometheus_build_info{job=~"$job"}', 'instance');
-      templatedDashboard
-      .addRow(
-        g.row('Prometheus Stats')
-        .addPanel(
-          g.panel('Prometheus Stats') +
-          g.tablePanel(if showMultiCluster then [
-            'count by (cluster, job, instance, version) (prometheus_build_info{cluster=~"$cluster", job=~"$job", instance=~"$instance"})',
-            'max by (cluster, job, instance) (time() - process_start_time_seconds{cluster=~"$cluster", job=~"$job", instance=~"$instance"})',
-          ] else [
-            'count by (job, instance, version) (prometheus_build_info{job=~"$job", instance=~"$instance"})',
-            'max by (job, instance) (time() - process_start_time_seconds{job=~"$job", instance=~"$instance"})',
-          ], {
-            cluster: { alias: if showMultiCluster then 'Cluster' else '' },
-            job: { alias: 'Job' },
-            instance: { alias: 'Instance' },
-            version: { alias: 'Version' },
-            'Value #A': { alias: 'Count', type: 'hidden' },
-            'Value #B': { alias: 'Uptime', type: 'number', unit: 's' },
-          })
-        )
       )
-      .addRow(
-        g.row('Discovery')
-        .addPanel(
-          g.panel('Target Sync') +
-          g.queryPanel(if showMultiCluster then 'sum(rate(prometheus_target_sync_length_seconds_sum{cluster=~"$cluster",job=~"$job",instance=~"$instance"}[5m])) by (cluster, job, scrape_job, instance) * 1e3'
-                       else 'sum(rate(prometheus_target_sync_length_seconds_sum{job=~"$job",instance=~"$instance"}[5m])) by (scrape_job) * 1e3',
-                       if showMultiCluster then '{{cluster}}:{{job}}:{{instance}}:{{scrape_job}}'
-                       else '{{scrape_job}}') +
-          { yaxes: g.yaxes('ms') }
-        )
-        .addPanel(
-          g.panel('Targets') +
-          g.queryPanel(if showMultiCluster then 'sum by (cluster, job, instance) (prometheus_sd_discovered_targets{cluster=~"$cluster", job=~"$job",instance=~"$instance"})'
-                       else 'sum(prometheus_sd_discovered_targets{job=~"$job",instance=~"$instance"})',
-                       if showMultiCluster then '{{cluster}}:{{job}}:{{instance}}'
-                       else 'Targets') +
-          g.stack
-        )
-      )
-      .addRow(
-        g.row('Retrieval')
-        .addPanel(
-          g.panel('Average Scrape Interval Duration') +
-          g.queryPanel(if showMultiCluster then 'rate(prometheus_target_interval_length_seconds_sum{cluster=~"$cluster", job=~"$job",instance=~"$instance"}[5m]) / rate(prometheus_target_interval_length_seconds_count{cluster=~"$cluster", job=~"$job",instance=~"$instance"}[5m]) * 1e3'
-                       else 'rate(prometheus_target_interval_length_seconds_sum{job=~"$job",instance=~"$instance"}[5m]) / rate(prometheus_target_interval_length_seconds_count{job=~"$job",instance=~"$instance"}[5m]) * 1e3',
-                       if showMultiCluster then '{{cluster}}:{{job}}:{{instance}} {{interval}} configured'
-                       else '{{interval}} configured') +
-          { yaxes: g.yaxes('ms') }
-        )
-        .addPanel(
-          g.panel('Scrape failures') +
-          g.queryPanel(if showMultiCluster then [
-            'sum by (cluster, job, instance) (rate(prometheus_target_scrapes_exceeded_body_size_limit_total{cluster=~"$cluster",job=~"$job",instance=~"$instance"}[1m]))',
-            'sum by (cluster, job, instance) (rate(prometheus_target_scrapes_exceeded_sample_limit_total{cluster=~"$cluster",job=~"$job",instance=~"$instance"}[1m]))',
-            'sum by (cluster, job, instance) (rate(prometheus_target_scrapes_sample_duplicate_timestamp_total{cluster=~"$cluster",job=~"$job",instance=~"$instance"}[1m]))',
-            'sum by (cluster, job, instance) (rate(prometheus_target_scrapes_sample_out_of_bounds_total{cluster=~"$cluster",job=~"$job",instance=~"$instance"}[1m]))',
-            'sum by (cluster, job, instance) (rate(prometheus_target_scrapes_sample_out_of_order_total{cluster=~"$cluster",job=~"$job",instance=~"$instance"}[1m]))',
-          ] else [
-            'sum by (job) (rate(prometheus_target_scrapes_exceeded_body_size_limit_total[1m]))',
-            'sum by (job) (rate(prometheus_target_scrapes_exceeded_sample_limit_total[1m]))',
-            'sum by (job) (rate(prometheus_target_scrapes_sample_duplicate_timestamp_total[1m]))',
-            'sum by (job) (rate(prometheus_target_scrapes_sample_out_of_bounds_total[1m]))',
-            'sum by (job) (rate(prometheus_target_scrapes_sample_out_of_order_total[1m]))',
-          ], if showMultiCluster then [
-            'exceeded body size limit: {{cluster}} {{job}} {{instance}}',
-            'exceeded sample limit: {{cluster}} {{job}} {{instance}}',
-            'duplicate timestamp: {{cluster}} {{job}} {{instance}}',
-            'out of bounds: {{cluster}} {{job}} {{instance}}',
-            'out of order: {{cluster}} {{job}} {{instance}}',
-          ] else [
-            'exceeded body size limit: {{job}}',
-            'exceeded sample limit: {{job}}',
-            'duplicate timestamp: {{job}}',
-            'out of bounds: {{job}}',
-            'out of order: {{job}}',
-          ]) +
-          g.stack
-        )
-        .addPanel(
-          g.panel('Appended Samples') +
-          g.queryPanel(if showMultiCluster then 'rate(prometheus_tsdb_head_samples_appended_total{cluster=~"$cluster", job=~"$job",instance=~"$instance"}[5m])'
-                       else 'rate(prometheus_tsdb_head_samples_appended_total{job=~"$job",instance=~"$instance"}[5m])',
-                       if showMultiCluster then '{{cluster}} {{job}} {{instance}}'
-                       else '{{job}} {{instance}}') +
-          g.stack
-        )
-      )
-      .addRow(
-        g.row('Storage')
-        .addPanel(
-          g.panel('Head Series') +
-          g.queryPanel(if showMultiCluster then 'prometheus_tsdb_head_series{cluster=~"$cluster",job=~"$job",instance=~"$instance"}'
-                       else 'prometheus_tsdb_head_series{job=~"$job",instance=~"$instance"}',
-                       if showMultiCluster then '{{cluster}} {{job}} {{instance}} head series'
-                       else '{{job}} {{instance}} head series') +
-          g.stack
-        )
-        .addPanel(
-          g.panel('Head Chunks') +
-          g.queryPanel(if showMultiCluster then 'prometheus_tsdb_head_chunks{cluster=~"$cluster",job=~"$job",instance=~"$instance"}'
-                       else 'prometheus_tsdb_head_chunks{job=~"$job",instance=~"$instance"}',
-                       if showMultiCluster then '{{cluster}} {{job}} {{instance}} head chunks'
-                       else '{{job}} {{instance}} head chunks') +
-          g.stack
-        )
-      )
-      .addRow(
-        g.row('Query')
-        .addPanel(
-          g.panel('Query Rate') +
-          g.queryPanel(if showMultiCluster then 'rate(prometheus_engine_query_duration_seconds_count{cluster=~"$cluster",job=~"$job",instance=~"$instance",slice="inner_eval"}[5m])'
-                       else 'rate(prometheus_engine_query_duration_seconds_count{job=~"$job",instance=~"$instance",slice="inner_eval"}[5m])',
-                       if showMultiCluster then '{{cluster}} {{job}} {{instance}}'
-                       else '{{job}} {{instance}}') +
-          g.stack,
-        )
-        .addPanel(
-          g.panel('Stage Duration') +
-          g.queryPanel(if showMultiCluster then 'max by (slice) (prometheus_engine_query_duration_seconds{quantile="0.9",cluster=~"$cluster", job=~"$job",instance=~"$instance"}) * 1e3'
-                       else 'max by (slice) (prometheus_engine_query_duration_seconds{quantile="0.9",job=~"$job",instance=~"$instance"}) * 1e3',
-                       if showMultiCluster then '{{slice}}'
-                       else '{{slice}}') +
-          { yaxes: g.yaxes('ms') } +
-          g.stack,
-        )
-      ) + {
-        tags: $._config.grafanaPrometheus.tags,
-        refresh: $._config.grafanaPrometheus.refresh,
-      },
+      + grafonnetDashboard.withTags($._config.grafanaPrometheus.tags)
+      + grafonnetDashboard.withRefresh($._config.grafanaPrometheus.refresh)
+      + grafonnetDashboard.withVariables([
+        grafonnetVariable.datasource.new('datasource', 'prometheus')
+        + grafonnetVariable.datasource.generalOptions.withLabel('Datasource'),
+      ])
+      + (if showMultiCluster then
+           grafonnetDashboard.withVariablesMixin([
+             grafonnetVariable.query.new('cluster')
+             + grafonnetVariable.query.withDatasource('prometheus', '${datasource}')
+             + grafonnetVariable.query.withSort(2)
+             + grafonnetVariable.query.generalOptions.withLabel($._config.clusterLabel)
+             + grafonnetVariable.query.queryTypes.withLabelValues('cluster', 'prometheus_build_info{%(prometheusSelector)s}' % $._config)
+             + grafonnetVariable.query.refresh.onLoad()
+             + grafonnetVariable.query.selectionOptions.withIncludeAll(true, '.+')
+             + grafonnetVariable.query.selectionOptions.withMulti(),
+
+             grafonnetVariable.query.new('job')
+             + grafonnetVariable.query.withDatasource('prometheus', '${datasource}')
+             + grafonnetVariable.query.withSort(2)
+             + grafonnetVariable.query.queryTypes.withLabelValues('job', 'prometheus_build_info{cluster=~"$cluster"}')
+             + grafonnetVariable.query.refresh.onLoad()
+             + grafonnetVariable.query.selectionOptions.withIncludeAll(true, '.+')
+             + grafonnetVariable.query.selectionOptions.withMulti(),
+
+             grafonnetVariable.query.new('instance')
+             + grafonnetVariable.query.withDatasource('prometheus', '${datasource}')
+             + grafonnetVariable.query.withSort(2)
+             + grafonnetVariable.query.queryTypes.withLabelValues('instance', 'prometheus_build_info{cluster=~"$cluster", job=~"$job"}')
+             + grafonnetVariable.query.refresh.onLoad()
+             + grafonnetVariable.query.selectionOptions.withIncludeAll(true, '.+')
+             + grafonnetVariable.query.selectionOptions.withMulti(),
+           ])
+         else
+           grafonnetDashboard.withVariablesMixin([
+             grafonnetVariable.query.new('job')
+             + grafonnetVariable.query.withDatasource('prometheus', '${datasource}')
+             + grafonnetVariable.query.withSort(2)
+             + grafonnetVariable.query.queryTypes.withLabelValues('job', 'prometheus_build_info{%(prometheusSelector)s}' % $._config)
+             + grafonnetVariable.query.refresh.onLoad()
+             + grafonnetVariable.query.selectionOptions.withIncludeAll(true, '.+')
+             + grafonnetVariable.query.selectionOptions.withMulti(),
+
+             grafonnetVariable.query.new('instance')
+             + grafonnetVariable.query.withDatasource('prometheus', '${datasource}')
+             + grafonnetVariable.query.withSort(2)
+             + grafonnetVariable.query.queryTypes.withLabelValues('instance', 'prometheus_build_info{job=~"$job"}')
+             + grafonnetVariable.query.refresh.onLoad()
+             + grafonnetVariable.query.selectionOptions.withIncludeAll(true, '.+')
+             + grafonnetVariable.query.selectionOptions.withMulti(),
+           ]))
+      + grafonnetDashboard.withPanels(
+        grafonnetGrid.wrapPanels([
+          grafonnetRow.new('Prometheus Stats'),
+
+          grafonnetTable.new('Prometheus Stats')
+          + grafonnetTable.gridPos.withW(24)
+          + grafonnetTable.queryOptions.withDatasource('prometheus', '${datasource}')
+          + (
+            if showMultiCluster then
+              grafonnetTable.queryOptions.withTargets([
+                grafonnetPrometheus.new('$datasource', 'count by (cluster, job, instance, version) (prometheus_build_info{cluster=~"$cluster", job=~"$job", instance=~"$instance"})')
+                + grafonnetPrometheus.withFormat('table')
+                + grafonnetPrometheus.withInstant(true),
+
+                grafonnetPrometheus.new('$datasource', 'max by (cluster, job, instance) (time() - process_start_time_seconds{cluster=~"$cluster", job=~"$job", instance=~"$instance"})')
+                + grafonnetPrometheus.withFormat('table')
+                + grafonnetPrometheus.withInstant(true),
+              ])
+            else
+              grafonnetTable.queryOptions.withTargets([
+                grafonnetPrometheus.new('$datasource', 'count by (job, instance, version) (prometheus_build_info{job=~"$job", instance=~"$instance"})')
+                + grafonnetPrometheus.withFormat('table')
+                + grafonnetPrometheus.withInstant(true),
+
+                grafonnetPrometheus.new('$datasource', 'max by (job, instance) (time() - process_start_time_seconds{job=~"$job", instance=~"$instance"})')
+                + grafonnetPrometheus.withFormat('table')
+                + grafonnetPrometheus.withInstant(true),
+              ])
+          )
+          + grafonnetTable.queryOptions.withTransformations([
+            grafonnetTable.transformation.withId('merge'),
+
+            grafonnetTable.transformation.withId('organize')
+            + grafonnetTable.transformation.withOptions({
+              excludeByName: {
+                Time: true,
+                'Value #A': true,
+              },
+              indexByName: {
+                cluster: 0,
+                job: 1,
+                instance: 2,
+                version: 3,
+                'Value #B': 4,
+              },
+              renameByName: {
+                cluster: 'Cluster',
+                job: 'Job',
+                instance: 'Instance',
+                version: 'Version',
+                'Value #B': 'Uptime',
+              },
+            }),
+          ])
+          + grafonnetTable.standardOptions.withOverrides(
+            grafonnetTable.fieldOverride.byName.new('Uptime')
+            + grafonnetTable.fieldOverride.byName.withPropertiesFromOptions(
+              grafonnetTable.standardOptions.withUnit('s')
+            )
+          ),
+
+          grafonnetRow.new('Discovery'),
+
+          grafonnetTimeSeries.new('Target Sync')
+          + grafonnetTimeSeries.fieldConfig.defaults.custom.withFillOpacity(10)
+          + grafonnetTimeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+          + grafonnetTimeSeries.gridPos.withH(7)
+          + grafonnetTimeSeries.gridPos.withW(12)
+          + grafonnetTimeSeries.options.tooltip.withMode('multi')
+          + grafonnetTimeSeries.options.tooltip.withSort('desc')
+          + grafonnetTimeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+          + (
+            if showMultiCluster then
+              grafonnetTimeSeries.queryOptions.withTargets([
+                grafonnetPrometheus.new('$datasource', 'sum(rate(prometheus_target_sync_length_seconds_sum{cluster=~"$cluster",job=~"$job",instance=~"$instance"}[5m])) by (cluster, job, scrape_job, instance) * 1e3')
+                + grafonnetPrometheus.withLegendFormat('{{cluster}}:{{job}}:{{instance}}:{{scrape_job}}'),
+              ])
+            else
+              grafonnetTimeSeries.queryOptions.withTargets([
+                grafonnetPrometheus.new('$datasource', 'sum(rate(prometheus_target_sync_length_seconds_sum{job=~"$job",instance=~"$instance"}[5m])) by (scrape_job) * 1e3')
+                + grafonnetPrometheus.withLegendFormat('{{scrape_job}}'),
+              ])
+          )
+          + grafonnetTimeSeries.standardOptions.withMin(0)
+          + grafonnetTimeSeries.standardOptions.withUnit('ms'),
+
+          grafonnetTimeSeries.new('Targets')
+          + grafonnetTimeSeries.fieldConfig.defaults.custom.withFillOpacity(100)
+          + grafonnetTimeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+          + grafonnetTimeSeries.fieldConfig.defaults.custom.stacking.withMode('normal')
+          + grafonnetTimeSeries.gridPos.withH(7)
+          + grafonnetTimeSeries.gridPos.withW(12)
+          + grafonnetTimeSeries.options.tooltip.withMode('multi')
+          + grafonnetTimeSeries.options.tooltip.withSort('desc')
+          + grafonnetTimeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+          + (
+            if showMultiCluster then
+              grafonnetTimeSeries.queryOptions.withTargets([
+                grafonnetPrometheus.new('$datasource', 'sum by (cluster, job, instance) (prometheus_sd_discovered_targets{cluster=~"$cluster", job=~"$job",instance=~"$instance"})')
+                + grafonnetPrometheus.withLegendFormat('{{cluster}}:{{job}}:{{instance}}'),
+              ])
+            else
+              grafonnetTimeSeries.queryOptions.withTargets([
+                grafonnetPrometheus.new('$datasource', 'sum(prometheus_sd_discovered_targets{job=~"$job",instance=~"$instance"})')
+                + grafonnetPrometheus.withLegendFormat('Targets'),
+              ])
+          )
+          + grafonnetTimeSeries.standardOptions.withMin(0)
+          + grafonnetTimeSeries.standardOptions.withUnit('short'),
+
+          grafonnetRow.new('Retrieval'),
+
+          grafonnetTimeSeries.new('Average Scrape Interval Duration')
+          + grafonnetTimeSeries.fieldConfig.defaults.custom.withFillOpacity(10)
+          + grafonnetTimeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+          + grafonnetTimeSeries.gridPos.withH(7)
+          + grafonnetTimeSeries.gridPos.withW(8)
+          + grafonnetTimeSeries.options.tooltip.withMode('multi')
+          + grafonnetTimeSeries.options.tooltip.withSort('desc')
+          + grafonnetTimeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+          + (
+            if showMultiCluster then
+              grafonnetTimeSeries.queryOptions.withTargets([
+                grafonnetPrometheus.new('$datasource', 'rate(prometheus_target_interval_length_seconds_sum{cluster=~"$cluster", job=~"$job",instance=~"$instance"}[5m]) / rate(prometheus_target_interval_length_seconds_count{cluster=~"$cluster", job=~"$job",instance=~"$instance"}[5m]) * 1e3')
+                + grafonnetPrometheus.withLegendFormat('{{cluster}}:{{job}}:{{instance}} {{interval}} configured'),
+              ])
+            else
+              grafonnetTimeSeries.queryOptions.withTargets([
+                grafonnetPrometheus.new('$datasource', 'rate(prometheus_target_interval_length_seconds_sum{job=~"$job",instance=~"$instance"}[5m]) / rate(prometheus_target_interval_length_seconds_count{job=~"$job",instance=~"$instance"}[5m]) * 1e3')
+                + grafonnetPrometheus.withLegendFormat('{{interval}} configured'),
+              ])
+          )
+          + grafonnetTimeSeries.standardOptions.withMin(0)
+          + grafonnetTimeSeries.standardOptions.withUnit('ms'),
+
+          grafonnetTimeSeries.new('Scrape failures')
+          + grafonnetTimeSeries.fieldConfig.defaults.custom.withFillOpacity(100)
+          + grafonnetTimeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+          + grafonnetTimeSeries.fieldConfig.defaults.custom.stacking.withMode('normal')
+          + grafonnetTimeSeries.gridPos.withH(7)
+          + grafonnetTimeSeries.gridPos.withW(8)
+          + grafonnetTimeSeries.options.tooltip.withMode('multi')
+          + grafonnetTimeSeries.options.tooltip.withSort('desc')
+          + grafonnetTimeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+          + (
+            if showMultiCluster then
+              grafonnetTimeSeries.queryOptions.withTargets([
+                grafonnetPrometheus.new('$datasource', 'sum by (cluster, job, instance) (rate(prometheus_target_scrapes_exceeded_body_size_limit_total{cluster=~"$cluster",job=~"$job",instance=~"$instance"}[1m]))')
+                + grafonnetPrometheus.withLegendFormat('exceeded body size limit: {{cluster}} {{job}} {{instance}}'),
+                grafonnetPrometheus.new('$datasource', 'sum by (cluster, job, instance) (rate(prometheus_target_scrapes_exceeded_sample_limit_total{cluster=~"$cluster",job=~"$job",instance=~"$instance"}[1m]))')
+                + grafonnetPrometheus.withLegendFormat('exceeded sample limit: {{cluster}} {{job}} {{instance}}'),
+                grafonnetPrometheus.new('$datasource', 'sum by (cluster, job, instance) (rate(prometheus_target_scrapes_sample_duplicate_timestamp_total{cluster=~"$cluster",job=~"$job",instance=~"$instance"}[1m]))')
+                + grafonnetPrometheus.withLegendFormat('duplicate timestamp: {{cluster}} {{job}} {{instance}}'),
+                grafonnetPrometheus.new('$datasource', 'sum by (cluster, job, instance) (rate(prometheus_target_scrapes_sample_out_of_bounds_total{cluster=~"$cluster",job=~"$job",instance=~"$instance"}[1m]))')
+                + grafonnetPrometheus.withLegendFormat('out of bounds: {{cluster}} {{job}} {{instance}}'),
+                grafonnetPrometheus.new('$datasource', 'sum by (cluster, job, instance) (rate(prometheus_target_scrapes_sample_out_of_order_total{cluster=~"$cluster",job=~"$job",instance=~"$instance"}[1m]))')
+                + grafonnetPrometheus.withLegendFormat('out of order: {{cluster}} {{job}} {{instance}}'),
+              ])
+            else
+              grafonnetTimeSeries.queryOptions.withTargets([
+                grafonnetPrometheus.new('$datasource', 'sum by (job) (rate(prometheus_target_scrapes_exceeded_body_size_limit_total[1m]))')
+                + grafonnetPrometheus.withLegendFormat('exceeded body size limit: {{job}}'),
+                grafonnetPrometheus.new('$datasource', 'sum by (job) (rate(prometheus_target_scrapes_exceeded_sample_limit_total[1m]))')
+                + grafonnetPrometheus.withLegendFormat('exceeded sample limit: {{job}}'),
+                grafonnetPrometheus.new('$datasource', 'sum by (job) (rate(prometheus_target_scrapes_sample_duplicate_timestamp_total[1m]))')
+                + grafonnetPrometheus.withLegendFormat('duplicate timestamp: {{job}}'),
+                grafonnetPrometheus.new('$datasource', 'sum by (job) (rate(prometheus_target_scrapes_sample_out_of_bounds_total[1m]))')
+                + grafonnetPrometheus.withLegendFormat('out of bounds: {{job}}'),
+                grafonnetPrometheus.new('$datasource', 'sum by (job) (rate(prometheus_target_scrapes_sample_out_of_order_total[1m]))')
+                + grafonnetPrometheus.withLegendFormat('out of order: {{job}}'),
+              ])
+          )
+          + grafonnetTimeSeries.standardOptions.withMin(0)
+          + grafonnetTimeSeries.standardOptions.withUnit('short'),
+
+          grafonnetTimeSeries.new('Appended Samples')
+          + grafonnetTimeSeries.fieldConfig.defaults.custom.withFillOpacity(100)
+          + grafonnetTimeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+          + grafonnetTimeSeries.fieldConfig.defaults.custom.stacking.withMode('normal')
+          + grafonnetTimeSeries.gridPos.withH(7)
+          + grafonnetTimeSeries.gridPos.withW(8)
+          + grafonnetTimeSeries.options.tooltip.withMode('multi')
+          + grafonnetTimeSeries.options.tooltip.withSort('desc')
+          + grafonnetTimeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+          + (
+            if showMultiCluster then
+              grafonnetTimeSeries.queryOptions.withTargets([
+                grafonnetPrometheus.new('$datasource', 'rate(prometheus_tsdb_head_samples_appended_total{cluster=~"$cluster", job=~"$job",instance=~"$instance"}[5m])')
+                + grafonnetPrometheus.withLegendFormat('{{cluster}} {{job}} {{instance}}'),
+              ])
+            else
+              grafonnetTimeSeries.queryOptions.withTargets([
+                grafonnetPrometheus.new('$datasource', 'rate(prometheus_tsdb_head_samples_appended_total{job=~"$job",instance=~"$instance"}[5m])')
+                + grafonnetPrometheus.withLegendFormat('{{job}} {{instance}}'),
+              ])
+          )
+          + grafonnetTimeSeries.standardOptions.withMin(0)
+          + grafonnetTimeSeries.standardOptions.withUnit('short'),
+
+          grafonnetRow.new('Storage'),
+
+          grafonnetTimeSeries.new('Head Series')
+          + grafonnetTimeSeries.fieldConfig.defaults.custom.withFillOpacity(100)
+          + grafonnetTimeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+          + grafonnetTimeSeries.fieldConfig.defaults.custom.stacking.withMode('normal')
+          + grafonnetTimeSeries.gridPos.withH(7)
+          + grafonnetTimeSeries.gridPos.withW(12)
+          + grafonnetTimeSeries.options.tooltip.withMode('multi')
+          + grafonnetTimeSeries.options.tooltip.withSort('desc')
+          + grafonnetTimeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+          + (
+            if showMultiCluster then
+              grafonnetTimeSeries.queryOptions.withTargets([
+                grafonnetPrometheus.new('$datasource', 'prometheus_tsdb_head_series{cluster=~"$cluster",job=~"$job",instance=~"$instance"}')
+                + grafonnetPrometheus.withLegendFormat('{{cluster}} {{job}} {{instance}} head series'),
+              ])
+            else
+              grafonnetTimeSeries.queryOptions.withTargets([
+                grafonnetPrometheus.new('$datasource', 'prometheus_tsdb_head_series{job=~"$job",instance=~"$instance"}')
+                + grafonnetPrometheus.withLegendFormat('{{job}} {{instance}} head series'),
+              ])
+          )
+          + grafonnetTimeSeries.standardOptions.withMin(0)
+          + grafonnetTimeSeries.standardOptions.withUnit('short'),
+
+          grafonnetTimeSeries.new('Head Chunks')
+          + grafonnetTimeSeries.fieldConfig.defaults.custom.withFillOpacity(100)
+          + grafonnetTimeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+          + grafonnetTimeSeries.fieldConfig.defaults.custom.stacking.withMode('normal')
+          + grafonnetTimeSeries.gridPos.withH(7)
+          + grafonnetTimeSeries.gridPos.withW(12)
+          + grafonnetTimeSeries.options.tooltip.withMode('multi')
+          + grafonnetTimeSeries.options.tooltip.withSort('desc')
+          + grafonnetTimeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+          + (
+            if showMultiCluster then
+              grafonnetTimeSeries.queryOptions.withTargets([
+                grafonnetPrometheus.new('$datasource', 'prometheus_tsdb_head_chunks{cluster=~"$cluster",job=~"$job",instance=~"$instance"}')
+                + grafonnetPrometheus.withLegendFormat('{{cluster}} {{job}} {{instance}} head chunks'),
+              ])
+            else
+              grafonnetTimeSeries.queryOptions.withTargets([
+                grafonnetPrometheus.new('$datasource', 'prometheus_tsdb_head_chunks{job=~"$job",instance=~"$instance"}')
+                + grafonnetPrometheus.withLegendFormat('{{job}} {{instance}} head chunks'),
+              ])
+          )
+          + grafonnetTimeSeries.standardOptions.withMin(0)
+          + grafonnetTimeSeries.standardOptions.withUnit('short'),
+
+          grafonnetRow.new('Query'),
+
+          grafonnetTimeSeries.new('Query Rate')
+          + grafonnetTimeSeries.fieldConfig.defaults.custom.withFillOpacity(100)
+          + grafonnetTimeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+          + grafonnetTimeSeries.fieldConfig.defaults.custom.stacking.withMode('normal')
+          + grafonnetTimeSeries.gridPos.withH(7)
+          + grafonnetTimeSeries.gridPos.withW(12)
+          + grafonnetTimeSeries.options.tooltip.withMode('multi')
+          + grafonnetTimeSeries.options.tooltip.withSort('desc')
+          + grafonnetTimeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+          + (
+            if showMultiCluster then
+              grafonnetTimeSeries.queryOptions.withTargets([
+                grafonnetPrometheus.new('$datasource', 'rate(prometheus_engine_query_duration_seconds_count{cluster=~"$cluster",job=~"$job",instance=~"$instance",slice="inner_eval"}[5m])')
+                + grafonnetPrometheus.withLegendFormat('{{cluster}} {{job}} {{instance}}'),
+              ])
+            else
+              grafonnetTimeSeries.queryOptions.withTargets([
+                grafonnetPrometheus.new('$datasource', 'rate(prometheus_engine_query_duration_seconds_count{job=~"$job",instance=~"$instance",slice="inner_eval"}[5m])')
+                + grafonnetPrometheus.withLegendFormat('{{job}} {{instance}}'),
+              ])
+          )
+          + grafonnetTimeSeries.standardOptions.withMin(0)
+          + grafonnetTimeSeries.standardOptions.withUnit('short'),
+
+          grafonnetTimeSeries.new('Stage Duration')
+          + grafonnetTimeSeries.fieldConfig.defaults.custom.withFillOpacity(100)
+          + grafonnetTimeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+          + grafonnetTimeSeries.fieldConfig.defaults.custom.stacking.withMode('normal')
+          + grafonnetTimeSeries.gridPos.withH(7)
+          + grafonnetTimeSeries.gridPos.withW(12)
+          + grafonnetTimeSeries.options.tooltip.withMode('multi')
+          + grafonnetTimeSeries.options.tooltip.withSort('desc')
+          + grafonnetTimeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+          + (
+            if showMultiCluster then
+              grafonnetTimeSeries.queryOptions.withTargets([
+                grafonnetPrometheus.new('$datasource', 'max by (slice) (prometheus_engine_query_duration_seconds{quantile="0.9",cluster=~"$cluster", job=~"$job",instance=~"$instance"}) * 1e3')
+                + grafonnetPrometheus.withLegendFormat('{{slice}}'),
+              ])
+            else
+              grafonnetTimeSeries.queryOptions.withTargets([
+                grafonnetPrometheus.new('$datasource', 'max by (slice) (prometheus_engine_query_duration_seconds{quantile="0.9",job=~"$job",instance=~"$instance"}) * 1e3')
+                + grafonnetPrometheus.withLegendFormat('{{slice}}'),
+              ])
+          )
+          + grafonnetTimeSeries.standardOptions.withMin(0)
+          + grafonnetTimeSeries.standardOptions.withUnit('ms'),
+        ])
+      ),
     // Remote write specific dashboard.
     'prometheus-remote-write.json':
       local timestampComparison =
