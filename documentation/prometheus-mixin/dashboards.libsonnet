@@ -1,115 +1,106 @@
-local grafana = import 'github.com/grafana/grafonnet-lib/grafonnet/grafana.libsonnet';
 local grafonnet = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonnet';
-local g = import 'github.com/grafana/jsonnet-libs/grafana-builder/grafana.libsonnet';
-local dashboard = grafana.dashboard;
-local row = grafana.row;
-local singlestat = grafana.singlestat;
-local prometheus = grafana.prometheus;
-local graphPanel = grafana.graphPanel;
-local tablePanel = grafana.tablePanel;
-local template = grafana.template;
 
-local grafonnetDashboard = grafonnet.dashboard;
-local grafonnetRow = grafonnet.panel.row;
-local grafonnetVariable = grafonnetDashboard.variable;
-local grafonnetGrid = grafonnet.util.grid;
-local grafonnetTable = grafonnet.panel.table;
-local grafonnetPrometheus = grafonnet.query.prometheus;
-local grafonnetTimeSeries = grafonnet.panel.timeSeries;
+local dashboard = grafonnet.dashboard;
+local row = grafonnet.panel.row;
+local variable = dashboard.variable;
+local grid = grafonnet.util.grid;
+local table = grafonnet.panel.table;
+local prometheus = grafonnet.query.prometheus;
+local timeSeries = grafonnet.panel.timeSeries;
 
 {
   grafanaDashboards+:: {
     'prometheus.json':
       local showMultiCluster = $._config.showMultiCluster;
 
-      grafonnetDashboard.new(
+      dashboard.new(
         '%(prefix)sOverview' % $._config.grafanaPrometheus
       )
-      + grafonnetDashboard.withTags($._config.grafanaPrometheus.tags)
-      + grafonnetDashboard.withRefresh($._config.grafanaPrometheus.refresh)
-      + grafonnetDashboard.withVariables([
-        grafonnetVariable.datasource.new('datasource', 'prometheus')
-        + grafonnetVariable.datasource.generalOptions.withLabel('Datasource'),
+      + dashboard.withTags($._config.grafanaPrometheus.tags)
+      + dashboard.withRefresh($._config.grafanaPrometheus.refresh)
+      + dashboard.withVariables([
+        variable.datasource.new('datasource', 'prometheus')
+        + variable.datasource.generalOptions.withLabel('Datasource'),
       ])
       + (if showMultiCluster then
-           grafonnetDashboard.withVariablesMixin([
-             grafonnetVariable.query.new('cluster')
-             + grafonnetVariable.query.withDatasource('prometheus', '${datasource}')
-             + grafonnetVariable.query.withSort(2)
-             + grafonnetVariable.query.generalOptions.withLabel($._config.clusterLabel)
-             + grafonnetVariable.query.queryTypes.withLabelValues('cluster', 'prometheus_build_info{%(prometheusSelector)s}' % $._config)
-             + grafonnetVariable.query.refresh.onLoad()
-             + grafonnetVariable.query.selectionOptions.withIncludeAll(true, '.+')
-             + grafonnetVariable.query.selectionOptions.withMulti(),
+           dashboard.withVariablesMixin([
+             variable.query.new('cluster')
+             + variable.query.withDatasource('prometheus', '${datasource}')
+             + variable.query.withSort(2)
+             + variable.query.generalOptions.withLabel($._config.clusterLabel)
+             + variable.query.queryTypes.withLabelValues('cluster', 'prometheus_build_info{%(prometheusSelector)s}' % $._config)
+             + variable.query.refresh.onLoad()
+             + variable.query.selectionOptions.withIncludeAll(true, '.+')
+             + variable.query.selectionOptions.withMulti(),
 
-             grafonnetVariable.query.new('job')
-             + grafonnetVariable.query.withDatasource('prometheus', '${datasource}')
-             + grafonnetVariable.query.withSort(2)
-             + grafonnetVariable.query.queryTypes.withLabelValues('job', 'prometheus_build_info{cluster=~"$cluster"}')
-             + grafonnetVariable.query.refresh.onLoad()
-             + grafonnetVariable.query.selectionOptions.withIncludeAll(true, '.+')
-             + grafonnetVariable.query.selectionOptions.withMulti(),
+             variable.query.new('job')
+             + variable.query.withDatasource('prometheus', '${datasource}')
+             + variable.query.withSort(2)
+             + variable.query.queryTypes.withLabelValues('job', 'prometheus_build_info{cluster=~"$cluster"}')
+             + variable.query.refresh.onLoad()
+             + variable.query.selectionOptions.withIncludeAll(true, '.+')
+             + variable.query.selectionOptions.withMulti(),
 
-             grafonnetVariable.query.new('instance')
-             + grafonnetVariable.query.withDatasource('prometheus', '${datasource}')
-             + grafonnetVariable.query.withSort(2)
-             + grafonnetVariable.query.queryTypes.withLabelValues('instance', 'prometheus_build_info{cluster=~"$cluster", job=~"$job"}')
-             + grafonnetVariable.query.refresh.onLoad()
-             + grafonnetVariable.query.selectionOptions.withIncludeAll(true, '.+')
-             + grafonnetVariable.query.selectionOptions.withMulti(),
+             variable.query.new('instance')
+             + variable.query.withDatasource('prometheus', '${datasource}')
+             + variable.query.withSort(2)
+             + variable.query.queryTypes.withLabelValues('instance', 'prometheus_build_info{cluster=~"$cluster", job=~"$job"}')
+             + variable.query.refresh.onLoad()
+             + variable.query.selectionOptions.withIncludeAll(true, '.+')
+             + variable.query.selectionOptions.withMulti(),
            ])
          else
-           grafonnetDashboard.withVariablesMixin([
-             grafonnetVariable.query.new('job')
-             + grafonnetVariable.query.withDatasource('prometheus', '${datasource}')
-             + grafonnetVariable.query.withSort(2)
-             + grafonnetVariable.query.queryTypes.withLabelValues('job', 'prometheus_build_info{%(prometheusSelector)s}' % $._config)
-             + grafonnetVariable.query.refresh.onLoad()
-             + grafonnetVariable.query.selectionOptions.withIncludeAll(true, '.+')
-             + grafonnetVariable.query.selectionOptions.withMulti(),
+           dashboard.withVariablesMixin([
+             variable.query.new('job')
+             + variable.query.withDatasource('prometheus', '${datasource}')
+             + variable.query.withSort(2)
+             + variable.query.queryTypes.withLabelValues('job', 'prometheus_build_info{%(prometheusSelector)s}' % $._config)
+             + variable.query.refresh.onLoad()
+             + variable.query.selectionOptions.withIncludeAll(true, '.+')
+             + variable.query.selectionOptions.withMulti(),
 
-             grafonnetVariable.query.new('instance')
-             + grafonnetVariable.query.withDatasource('prometheus', '${datasource}')
-             + grafonnetVariable.query.withSort(2)
-             + grafonnetVariable.query.queryTypes.withLabelValues('instance', 'prometheus_build_info{job=~"$job"}')
-             + grafonnetVariable.query.refresh.onLoad()
-             + grafonnetVariable.query.selectionOptions.withIncludeAll(true, '.+')
-             + grafonnetVariable.query.selectionOptions.withMulti(),
+             variable.query.new('instance')
+             + variable.query.withDatasource('prometheus', '${datasource}')
+             + variable.query.withSort(2)
+             + variable.query.queryTypes.withLabelValues('instance', 'prometheus_build_info{job=~"$job"}')
+             + variable.query.refresh.onLoad()
+             + variable.query.selectionOptions.withIncludeAll(true, '.+')
+             + variable.query.selectionOptions.withMulti(),
            ]))
-      + grafonnetDashboard.withPanels(
-        grafonnetGrid.wrapPanels([
-          grafonnetRow.new('Prometheus Stats'),
+      + dashboard.withPanels(
+        grid.wrapPanels([
+          row.new('Prometheus Stats'),
 
-          grafonnetTable.new('Prometheus Stats')
-          + grafonnetTable.gridPos.withW(24)
-          + grafonnetTable.queryOptions.withDatasource('prometheus', '${datasource}')
+          table.new('Prometheus Stats')
+          + table.gridPos.withW(24)
+          + table.queryOptions.withDatasource('prometheus', '${datasource}')
           + (
             if showMultiCluster then
-              grafonnetTable.queryOptions.withTargets([
-                grafonnetPrometheus.new('$datasource', 'count by (cluster, job, instance, version) (prometheus_build_info{cluster=~"$cluster", job=~"$job", instance=~"$instance"})')
-                + grafonnetPrometheus.withFormat('table')
-                + grafonnetPrometheus.withInstant(true),
+              table.queryOptions.withTargets([
+                prometheus.new('$datasource', 'count by (cluster, job, instance, version) (prometheus_build_info{cluster=~"$cluster", job=~"$job", instance=~"$instance"})')
+                + prometheus.withFormat('table')
+                + prometheus.withInstant(true),
 
-                grafonnetPrometheus.new('$datasource', 'max by (cluster, job, instance) (time() - process_start_time_seconds{cluster=~"$cluster", job=~"$job", instance=~"$instance"})')
-                + grafonnetPrometheus.withFormat('table')
-                + grafonnetPrometheus.withInstant(true),
+                prometheus.new('$datasource', 'max by (cluster, job, instance) (time() - process_start_time_seconds{cluster=~"$cluster", job=~"$job", instance=~"$instance"})')
+                + prometheus.withFormat('table')
+                + prometheus.withInstant(true),
               ])
             else
-              grafonnetTable.queryOptions.withTargets([
-                grafonnetPrometheus.new('$datasource', 'count by (job, instance, version) (prometheus_build_info{job=~"$job", instance=~"$instance"})')
-                + grafonnetPrometheus.withFormat('table')
-                + grafonnetPrometheus.withInstant(true),
+              table.queryOptions.withTargets([
+                prometheus.new('$datasource', 'count by (job, instance, version) (prometheus_build_info{job=~"$job", instance=~"$instance"})')
+                + prometheus.withFormat('table')
+                + prometheus.withInstant(true),
 
-                grafonnetPrometheus.new('$datasource', 'max by (job, instance) (time() - process_start_time_seconds{job=~"$job", instance=~"$instance"})')
-                + grafonnetPrometheus.withFormat('table')
-                + grafonnetPrometheus.withInstant(true),
+                prometheus.new('$datasource', 'max by (job, instance) (time() - process_start_time_seconds{job=~"$job", instance=~"$instance"})')
+                + prometheus.withFormat('table')
+                + prometheus.withInstant(true),
               ])
           )
-          + grafonnetTable.queryOptions.withTransformations([
-            grafonnetTable.transformation.withId('merge'),
+          + table.queryOptions.withTransformations([
+            table.transformation.withId('merge'),
 
-            grafonnetTable.transformation.withId('organize')
-            + grafonnetTable.transformation.withOptions({
+            table.transformation.withId('organize')
+            + table.transformation.withOptions({
               excludeByName: {
                 Time: true,
                 'Value #A': true,
@@ -130,532 +121,543 @@ local grafonnetTimeSeries = grafonnet.panel.timeSeries;
               },
             }),
           ])
-          + grafonnetTable.standardOptions.withOverrides(
-            grafonnetTable.fieldOverride.byName.new('Uptime')
-            + grafonnetTable.fieldOverride.byName.withPropertiesFromOptions(
-              grafonnetTable.standardOptions.withUnit('s')
+          + table.standardOptions.withOverrides(
+            table.fieldOverride.byName.new('Uptime')
+            + table.fieldOverride.byName.withPropertiesFromOptions(
+              table.standardOptions.withUnit('s')
             )
           ),
 
-          grafonnetRow.new('Discovery'),
+          row.new('Discovery'),
 
-          grafonnetTimeSeries.new('Target Sync')
-          + grafonnetTimeSeries.fieldConfig.defaults.custom.withFillOpacity(10)
-          + grafonnetTimeSeries.fieldConfig.defaults.custom.withShowPoints('never')
-          + grafonnetTimeSeries.gridPos.withH(7)
-          + grafonnetTimeSeries.gridPos.withW(12)
-          + grafonnetTimeSeries.options.tooltip.withMode('multi')
-          + grafonnetTimeSeries.options.tooltip.withSort('desc')
-          + grafonnetTimeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+          timeSeries.new('Target Sync')
+          + timeSeries.fieldConfig.defaults.custom.withFillOpacity(10)
+          + timeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+          + timeSeries.gridPos.withH(7)
+          + timeSeries.gridPos.withW(12)
+          + timeSeries.options.tooltip.withMode('multi')
+          + timeSeries.options.tooltip.withSort('desc')
+          + timeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
           + (
             if showMultiCluster then
-              grafonnetTimeSeries.queryOptions.withTargets([
-                grafonnetPrometheus.new('$datasource', 'sum(rate(prometheus_target_sync_length_seconds_sum{cluster=~"$cluster",job=~"$job",instance=~"$instance"}[5m])) by (cluster, job, scrape_job, instance) * 1e3')
-                + grafonnetPrometheus.withLegendFormat('{{cluster}}:{{job}}:{{instance}}:{{scrape_job}}'),
+              timeSeries.queryOptions.withTargets([
+                prometheus.new('$datasource', 'sum(rate(prometheus_target_sync_length_seconds_sum{cluster=~"$cluster",job=~"$job",instance=~"$instance"}[5m])) by (cluster, job, scrape_job, instance) * 1e3')
+                + prometheus.withLegendFormat('{{cluster}}:{{job}}:{{instance}}:{{scrape_job}}'),
               ])
             else
-              grafonnetTimeSeries.queryOptions.withTargets([
-                grafonnetPrometheus.new('$datasource', 'sum(rate(prometheus_target_sync_length_seconds_sum{job=~"$job",instance=~"$instance"}[5m])) by (scrape_job) * 1e3')
-                + grafonnetPrometheus.withLegendFormat('{{scrape_job}}'),
+              timeSeries.queryOptions.withTargets([
+                prometheus.new('$datasource', 'sum(rate(prometheus_target_sync_length_seconds_sum{job=~"$job",instance=~"$instance"}[5m])) by (scrape_job) * 1e3')
+                + prometheus.withLegendFormat('{{scrape_job}}'),
               ])
           )
-          + grafonnetTimeSeries.standardOptions.withMin(0)
-          + grafonnetTimeSeries.standardOptions.withUnit('ms'),
+          + timeSeries.standardOptions.withMin(0)
+          + timeSeries.standardOptions.withUnit('ms'),
 
-          grafonnetTimeSeries.new('Targets')
-          + grafonnetTimeSeries.fieldConfig.defaults.custom.withFillOpacity(100)
-          + grafonnetTimeSeries.fieldConfig.defaults.custom.withShowPoints('never')
-          + grafonnetTimeSeries.fieldConfig.defaults.custom.stacking.withMode('normal')
-          + grafonnetTimeSeries.gridPos.withH(7)
-          + grafonnetTimeSeries.gridPos.withW(12)
-          + grafonnetTimeSeries.options.tooltip.withMode('multi')
-          + grafonnetTimeSeries.options.tooltip.withSort('desc')
-          + grafonnetTimeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+          timeSeries.new('Targets')
+          + timeSeries.fieldConfig.defaults.custom.withFillOpacity(100)
+          + timeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+          + timeSeries.fieldConfig.defaults.custom.stacking.withMode('normal')
+          + timeSeries.gridPos.withH(7)
+          + timeSeries.gridPos.withW(12)
+          + timeSeries.options.tooltip.withMode('multi')
+          + timeSeries.options.tooltip.withSort('desc')
+          + timeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
           + (
             if showMultiCluster then
-              grafonnetTimeSeries.queryOptions.withTargets([
-                grafonnetPrometheus.new('$datasource', 'sum by (cluster, job, instance) (prometheus_sd_discovered_targets{cluster=~"$cluster", job=~"$job",instance=~"$instance"})')
-                + grafonnetPrometheus.withLegendFormat('{{cluster}}:{{job}}:{{instance}}'),
+              timeSeries.queryOptions.withTargets([
+                prometheus.new('$datasource', 'sum by (cluster, job, instance) (prometheus_sd_discovered_targets{cluster=~"$cluster", job=~"$job",instance=~"$instance"})')
+                + prometheus.withLegendFormat('{{cluster}}:{{job}}:{{instance}}'),
               ])
             else
-              grafonnetTimeSeries.queryOptions.withTargets([
-                grafonnetPrometheus.new('$datasource', 'sum(prometheus_sd_discovered_targets{job=~"$job",instance=~"$instance"})')
-                + grafonnetPrometheus.withLegendFormat('Targets'),
+              timeSeries.queryOptions.withTargets([
+                prometheus.new('$datasource', 'sum(prometheus_sd_discovered_targets{job=~"$job",instance=~"$instance"})')
+                + prometheus.withLegendFormat('Targets'),
               ])
           )
-          + grafonnetTimeSeries.standardOptions.withMin(0)
-          + grafonnetTimeSeries.standardOptions.withUnit('short'),
+          + timeSeries.standardOptions.withMin(0)
+          + timeSeries.standardOptions.withUnit('short'),
 
-          grafonnetRow.new('Retrieval'),
+          row.new('Retrieval'),
 
-          grafonnetTimeSeries.new('Average Scrape Interval Duration')
-          + grafonnetTimeSeries.fieldConfig.defaults.custom.withFillOpacity(10)
-          + grafonnetTimeSeries.fieldConfig.defaults.custom.withShowPoints('never')
-          + grafonnetTimeSeries.gridPos.withH(7)
-          + grafonnetTimeSeries.gridPos.withW(8)
-          + grafonnetTimeSeries.options.tooltip.withMode('multi')
-          + grafonnetTimeSeries.options.tooltip.withSort('desc')
-          + grafonnetTimeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+          timeSeries.new('Average Scrape Interval Duration')
+          + timeSeries.fieldConfig.defaults.custom.withFillOpacity(10)
+          + timeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+          + timeSeries.gridPos.withH(7)
+          + timeSeries.gridPos.withW(8)
+          + timeSeries.options.tooltip.withMode('multi')
+          + timeSeries.options.tooltip.withSort('desc')
+          + timeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
           + (
             if showMultiCluster then
-              grafonnetTimeSeries.queryOptions.withTargets([
-                grafonnetPrometheus.new('$datasource', 'rate(prometheus_target_interval_length_seconds_sum{cluster=~"$cluster", job=~"$job",instance=~"$instance"}[5m]) / rate(prometheus_target_interval_length_seconds_count{cluster=~"$cluster", job=~"$job",instance=~"$instance"}[5m]) * 1e3')
-                + grafonnetPrometheus.withLegendFormat('{{cluster}}:{{job}}:{{instance}} {{interval}} configured'),
+              timeSeries.queryOptions.withTargets([
+                prometheus.new('$datasource', 'rate(prometheus_target_interval_length_seconds_sum{cluster=~"$cluster", job=~"$job",instance=~"$instance"}[5m]) / rate(prometheus_target_interval_length_seconds_count{cluster=~"$cluster", job=~"$job",instance=~"$instance"}[5m]) * 1e3')
+                + prometheus.withLegendFormat('{{cluster}}:{{job}}:{{instance}} {{interval}} configured'),
               ])
             else
-              grafonnetTimeSeries.queryOptions.withTargets([
-                grafonnetPrometheus.new('$datasource', 'rate(prometheus_target_interval_length_seconds_sum{job=~"$job",instance=~"$instance"}[5m]) / rate(prometheus_target_interval_length_seconds_count{job=~"$job",instance=~"$instance"}[5m]) * 1e3')
-                + grafonnetPrometheus.withLegendFormat('{{interval}} configured'),
+              timeSeries.queryOptions.withTargets([
+                prometheus.new('$datasource', 'rate(prometheus_target_interval_length_seconds_sum{job=~"$job",instance=~"$instance"}[5m]) / rate(prometheus_target_interval_length_seconds_count{job=~"$job",instance=~"$instance"}[5m]) * 1e3')
+                + prometheus.withLegendFormat('{{interval}} configured'),
               ])
           )
-          + grafonnetTimeSeries.standardOptions.withMin(0)
-          + grafonnetTimeSeries.standardOptions.withUnit('ms'),
+          + timeSeries.standardOptions.withMin(0)
+          + timeSeries.standardOptions.withUnit('ms'),
 
-          grafonnetTimeSeries.new('Scrape failures')
-          + grafonnetTimeSeries.fieldConfig.defaults.custom.withFillOpacity(100)
-          + grafonnetTimeSeries.fieldConfig.defaults.custom.withShowPoints('never')
-          + grafonnetTimeSeries.fieldConfig.defaults.custom.stacking.withMode('normal')
-          + grafonnetTimeSeries.gridPos.withH(7)
-          + grafonnetTimeSeries.gridPos.withW(8)
-          + grafonnetTimeSeries.options.tooltip.withMode('multi')
-          + grafonnetTimeSeries.options.tooltip.withSort('desc')
-          + grafonnetTimeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+          timeSeries.new('Scrape failures')
+          + timeSeries.fieldConfig.defaults.custom.withFillOpacity(100)
+          + timeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+          + timeSeries.fieldConfig.defaults.custom.stacking.withMode('normal')
+          + timeSeries.gridPos.withH(7)
+          + timeSeries.gridPos.withW(8)
+          + timeSeries.options.tooltip.withMode('multi')
+          + timeSeries.options.tooltip.withSort('desc')
+          + timeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
           + (
             if showMultiCluster then
-              grafonnetTimeSeries.queryOptions.withTargets([
-                grafonnetPrometheus.new('$datasource', 'sum by (cluster, job, instance) (rate(prometheus_target_scrapes_exceeded_body_size_limit_total{cluster=~"$cluster",job=~"$job",instance=~"$instance"}[1m]))')
-                + grafonnetPrometheus.withLegendFormat('exceeded body size limit: {{cluster}} {{job}} {{instance}}'),
-                grafonnetPrometheus.new('$datasource', 'sum by (cluster, job, instance) (rate(prometheus_target_scrapes_exceeded_sample_limit_total{cluster=~"$cluster",job=~"$job",instance=~"$instance"}[1m]))')
-                + grafonnetPrometheus.withLegendFormat('exceeded sample limit: {{cluster}} {{job}} {{instance}}'),
-                grafonnetPrometheus.new('$datasource', 'sum by (cluster, job, instance) (rate(prometheus_target_scrapes_sample_duplicate_timestamp_total{cluster=~"$cluster",job=~"$job",instance=~"$instance"}[1m]))')
-                + grafonnetPrometheus.withLegendFormat('duplicate timestamp: {{cluster}} {{job}} {{instance}}'),
-                grafonnetPrometheus.new('$datasource', 'sum by (cluster, job, instance) (rate(prometheus_target_scrapes_sample_out_of_bounds_total{cluster=~"$cluster",job=~"$job",instance=~"$instance"}[1m]))')
-                + grafonnetPrometheus.withLegendFormat('out of bounds: {{cluster}} {{job}} {{instance}}'),
-                grafonnetPrometheus.new('$datasource', 'sum by (cluster, job, instance) (rate(prometheus_target_scrapes_sample_out_of_order_total{cluster=~"$cluster",job=~"$job",instance=~"$instance"}[1m]))')
-                + grafonnetPrometheus.withLegendFormat('out of order: {{cluster}} {{job}} {{instance}}'),
+              timeSeries.queryOptions.withTargets([
+                prometheus.new('$datasource', 'sum by (cluster, job, instance) (rate(prometheus_target_scrapes_exceeded_body_size_limit_total{cluster=~"$cluster",job=~"$job",instance=~"$instance"}[1m]))')
+                + prometheus.withLegendFormat('exceeded body size limit: {{cluster}} {{job}} {{instance}}'),
+                prometheus.new('$datasource', 'sum by (cluster, job, instance) (rate(prometheus_target_scrapes_exceeded_sample_limit_total{cluster=~"$cluster",job=~"$job",instance=~"$instance"}[1m]))')
+                + prometheus.withLegendFormat('exceeded sample limit: {{cluster}} {{job}} {{instance}}'),
+                prometheus.new('$datasource', 'sum by (cluster, job, instance) (rate(prometheus_target_scrapes_sample_duplicate_timestamp_total{cluster=~"$cluster",job=~"$job",instance=~"$instance"}[1m]))')
+                + prometheus.withLegendFormat('duplicate timestamp: {{cluster}} {{job}} {{instance}}'),
+                prometheus.new('$datasource', 'sum by (cluster, job, instance) (rate(prometheus_target_scrapes_sample_out_of_bounds_total{cluster=~"$cluster",job=~"$job",instance=~"$instance"}[1m]))')
+                + prometheus.withLegendFormat('out of bounds: {{cluster}} {{job}} {{instance}}'),
+                prometheus.new('$datasource', 'sum by (cluster, job, instance) (rate(prometheus_target_scrapes_sample_out_of_order_total{cluster=~"$cluster",job=~"$job",instance=~"$instance"}[1m]))')
+                + prometheus.withLegendFormat('out of order: {{cluster}} {{job}} {{instance}}'),
               ])
             else
-              grafonnetTimeSeries.queryOptions.withTargets([
-                grafonnetPrometheus.new('$datasource', 'sum by (job) (rate(prometheus_target_scrapes_exceeded_body_size_limit_total[1m]))')
-                + grafonnetPrometheus.withLegendFormat('exceeded body size limit: {{job}}'),
-                grafonnetPrometheus.new('$datasource', 'sum by (job) (rate(prometheus_target_scrapes_exceeded_sample_limit_total[1m]))')
-                + grafonnetPrometheus.withLegendFormat('exceeded sample limit: {{job}}'),
-                grafonnetPrometheus.new('$datasource', 'sum by (job) (rate(prometheus_target_scrapes_sample_duplicate_timestamp_total[1m]))')
-                + grafonnetPrometheus.withLegendFormat('duplicate timestamp: {{job}}'),
-                grafonnetPrometheus.new('$datasource', 'sum by (job) (rate(prometheus_target_scrapes_sample_out_of_bounds_total[1m]))')
-                + grafonnetPrometheus.withLegendFormat('out of bounds: {{job}}'),
-                grafonnetPrometheus.new('$datasource', 'sum by (job) (rate(prometheus_target_scrapes_sample_out_of_order_total[1m]))')
-                + grafonnetPrometheus.withLegendFormat('out of order: {{job}}'),
+              timeSeries.queryOptions.withTargets([
+                prometheus.new('$datasource', 'sum by (job) (rate(prometheus_target_scrapes_exceeded_body_size_limit_total[1m]))')
+                + prometheus.withLegendFormat('exceeded body size limit: {{job}}'),
+                prometheus.new('$datasource', 'sum by (job) (rate(prometheus_target_scrapes_exceeded_sample_limit_total[1m]))')
+                + prometheus.withLegendFormat('exceeded sample limit: {{job}}'),
+                prometheus.new('$datasource', 'sum by (job) (rate(prometheus_target_scrapes_sample_duplicate_timestamp_total[1m]))')
+                + prometheus.withLegendFormat('duplicate timestamp: {{job}}'),
+                prometheus.new('$datasource', 'sum by (job) (rate(prometheus_target_scrapes_sample_out_of_bounds_total[1m]))')
+                + prometheus.withLegendFormat('out of bounds: {{job}}'),
+                prometheus.new('$datasource', 'sum by (job) (rate(prometheus_target_scrapes_sample_out_of_order_total[1m]))')
+                + prometheus.withLegendFormat('out of order: {{job}}'),
               ])
           )
-          + grafonnetTimeSeries.standardOptions.withMin(0)
-          + grafonnetTimeSeries.standardOptions.withUnit('short'),
+          + timeSeries.standardOptions.withMin(0)
+          + timeSeries.standardOptions.withUnit('short'),
 
-          grafonnetTimeSeries.new('Appended Samples')
-          + grafonnetTimeSeries.fieldConfig.defaults.custom.withFillOpacity(100)
-          + grafonnetTimeSeries.fieldConfig.defaults.custom.withShowPoints('never')
-          + grafonnetTimeSeries.fieldConfig.defaults.custom.stacking.withMode('normal')
-          + grafonnetTimeSeries.gridPos.withH(7)
-          + grafonnetTimeSeries.gridPos.withW(8)
-          + grafonnetTimeSeries.options.tooltip.withMode('multi')
-          + grafonnetTimeSeries.options.tooltip.withSort('desc')
-          + grafonnetTimeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+          timeSeries.new('Appended Samples')
+          + timeSeries.fieldConfig.defaults.custom.withFillOpacity(100)
+          + timeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+          + timeSeries.fieldConfig.defaults.custom.stacking.withMode('normal')
+          + timeSeries.gridPos.withH(7)
+          + timeSeries.gridPos.withW(8)
+          + timeSeries.options.tooltip.withMode('multi')
+          + timeSeries.options.tooltip.withSort('desc')
+          + timeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
           + (
             if showMultiCluster then
-              grafonnetTimeSeries.queryOptions.withTargets([
-                grafonnetPrometheus.new('$datasource', 'rate(prometheus_tsdb_head_samples_appended_total{cluster=~"$cluster", job=~"$job",instance=~"$instance"}[5m])')
-                + grafonnetPrometheus.withLegendFormat('{{cluster}} {{job}} {{instance}}'),
+              timeSeries.queryOptions.withTargets([
+                prometheus.new('$datasource', 'rate(prometheus_tsdb_head_samples_appended_total{cluster=~"$cluster", job=~"$job",instance=~"$instance"}[5m])')
+                + prometheus.withLegendFormat('{{cluster}} {{job}} {{instance}}'),
               ])
             else
-              grafonnetTimeSeries.queryOptions.withTargets([
-                grafonnetPrometheus.new('$datasource', 'rate(prometheus_tsdb_head_samples_appended_total{job=~"$job",instance=~"$instance"}[5m])')
-                + grafonnetPrometheus.withLegendFormat('{{job}} {{instance}}'),
+              timeSeries.queryOptions.withTargets([
+                prometheus.new('$datasource', 'rate(prometheus_tsdb_head_samples_appended_total{job=~"$job",instance=~"$instance"}[5m])')
+                + prometheus.withLegendFormat('{{job}} {{instance}}'),
               ])
           )
-          + grafonnetTimeSeries.standardOptions.withMin(0)
-          + grafonnetTimeSeries.standardOptions.withUnit('short'),
+          + timeSeries.standardOptions.withMin(0)
+          + timeSeries.standardOptions.withUnit('short'),
 
-          grafonnetRow.new('Storage'),
+          row.new('Storage'),
 
-          grafonnetTimeSeries.new('Head Series')
-          + grafonnetTimeSeries.fieldConfig.defaults.custom.withFillOpacity(100)
-          + grafonnetTimeSeries.fieldConfig.defaults.custom.withShowPoints('never')
-          + grafonnetTimeSeries.fieldConfig.defaults.custom.stacking.withMode('normal')
-          + grafonnetTimeSeries.gridPos.withH(7)
-          + grafonnetTimeSeries.gridPos.withW(12)
-          + grafonnetTimeSeries.options.tooltip.withMode('multi')
-          + grafonnetTimeSeries.options.tooltip.withSort('desc')
-          + grafonnetTimeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+          timeSeries.new('Head Series')
+          + timeSeries.fieldConfig.defaults.custom.withFillOpacity(100)
+          + timeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+          + timeSeries.fieldConfig.defaults.custom.stacking.withMode('normal')
+          + timeSeries.gridPos.withH(7)
+          + timeSeries.gridPos.withW(12)
+          + timeSeries.options.tooltip.withMode('multi')
+          + timeSeries.options.tooltip.withSort('desc')
+          + timeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
           + (
             if showMultiCluster then
-              grafonnetTimeSeries.queryOptions.withTargets([
-                grafonnetPrometheus.new('$datasource', 'prometheus_tsdb_head_series{cluster=~"$cluster",job=~"$job",instance=~"$instance"}')
-                + grafonnetPrometheus.withLegendFormat('{{cluster}} {{job}} {{instance}} head series'),
+              timeSeries.queryOptions.withTargets([
+                prometheus.new('$datasource', 'prometheus_tsdb_head_series{cluster=~"$cluster",job=~"$job",instance=~"$instance"}')
+                + prometheus.withLegendFormat('{{cluster}} {{job}} {{instance}} head series'),
               ])
             else
-              grafonnetTimeSeries.queryOptions.withTargets([
-                grafonnetPrometheus.new('$datasource', 'prometheus_tsdb_head_series{job=~"$job",instance=~"$instance"}')
-                + grafonnetPrometheus.withLegendFormat('{{job}} {{instance}} head series'),
+              timeSeries.queryOptions.withTargets([
+                prometheus.new('$datasource', 'prometheus_tsdb_head_series{job=~"$job",instance=~"$instance"}')
+                + prometheus.withLegendFormat('{{job}} {{instance}} head series'),
               ])
           )
-          + grafonnetTimeSeries.standardOptions.withMin(0)
-          + grafonnetTimeSeries.standardOptions.withUnit('short'),
+          + timeSeries.standardOptions.withMin(0)
+          + timeSeries.standardOptions.withUnit('short'),
 
-          grafonnetTimeSeries.new('Head Chunks')
-          + grafonnetTimeSeries.fieldConfig.defaults.custom.withFillOpacity(100)
-          + grafonnetTimeSeries.fieldConfig.defaults.custom.withShowPoints('never')
-          + grafonnetTimeSeries.fieldConfig.defaults.custom.stacking.withMode('normal')
-          + grafonnetTimeSeries.gridPos.withH(7)
-          + grafonnetTimeSeries.gridPos.withW(12)
-          + grafonnetTimeSeries.options.tooltip.withMode('multi')
-          + grafonnetTimeSeries.options.tooltip.withSort('desc')
-          + grafonnetTimeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+          timeSeries.new('Head Chunks')
+          + timeSeries.fieldConfig.defaults.custom.withFillOpacity(100)
+          + timeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+          + timeSeries.fieldConfig.defaults.custom.stacking.withMode('normal')
+          + timeSeries.gridPos.withH(7)
+          + timeSeries.gridPos.withW(12)
+          + timeSeries.options.tooltip.withMode('multi')
+          + timeSeries.options.tooltip.withSort('desc')
+          + timeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
           + (
             if showMultiCluster then
-              grafonnetTimeSeries.queryOptions.withTargets([
-                grafonnetPrometheus.new('$datasource', 'prometheus_tsdb_head_chunks{cluster=~"$cluster",job=~"$job",instance=~"$instance"}')
-                + grafonnetPrometheus.withLegendFormat('{{cluster}} {{job}} {{instance}} head chunks'),
+              timeSeries.queryOptions.withTargets([
+                prometheus.new('$datasource', 'prometheus_tsdb_head_chunks{cluster=~"$cluster",job=~"$job",instance=~"$instance"}')
+                + prometheus.withLegendFormat('{{cluster}} {{job}} {{instance}} head chunks'),
               ])
             else
-              grafonnetTimeSeries.queryOptions.withTargets([
-                grafonnetPrometheus.new('$datasource', 'prometheus_tsdb_head_chunks{job=~"$job",instance=~"$instance"}')
-                + grafonnetPrometheus.withLegendFormat('{{job}} {{instance}} head chunks'),
+              timeSeries.queryOptions.withTargets([
+                prometheus.new('$datasource', 'prometheus_tsdb_head_chunks{job=~"$job",instance=~"$instance"}')
+                + prometheus.withLegendFormat('{{job}} {{instance}} head chunks'),
               ])
           )
-          + grafonnetTimeSeries.standardOptions.withMin(0)
-          + grafonnetTimeSeries.standardOptions.withUnit('short'),
+          + timeSeries.standardOptions.withMin(0)
+          + timeSeries.standardOptions.withUnit('short'),
 
-          grafonnetRow.new('Query'),
+          row.new('Query'),
 
-          grafonnetTimeSeries.new('Query Rate')
-          + grafonnetTimeSeries.fieldConfig.defaults.custom.withFillOpacity(100)
-          + grafonnetTimeSeries.fieldConfig.defaults.custom.withShowPoints('never')
-          + grafonnetTimeSeries.fieldConfig.defaults.custom.stacking.withMode('normal')
-          + grafonnetTimeSeries.gridPos.withH(7)
-          + grafonnetTimeSeries.gridPos.withW(12)
-          + grafonnetTimeSeries.options.tooltip.withMode('multi')
-          + grafonnetTimeSeries.options.tooltip.withSort('desc')
-          + grafonnetTimeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+          timeSeries.new('Query Rate')
+          + timeSeries.fieldConfig.defaults.custom.withFillOpacity(100)
+          + timeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+          + timeSeries.fieldConfig.defaults.custom.stacking.withMode('normal')
+          + timeSeries.gridPos.withH(7)
+          + timeSeries.gridPos.withW(12)
+          + timeSeries.options.tooltip.withMode('multi')
+          + timeSeries.options.tooltip.withSort('desc')
+          + timeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
           + (
             if showMultiCluster then
-              grafonnetTimeSeries.queryOptions.withTargets([
-                grafonnetPrometheus.new('$datasource', 'rate(prometheus_engine_query_duration_seconds_count{cluster=~"$cluster",job=~"$job",instance=~"$instance",slice="inner_eval"}[5m])')
-                + grafonnetPrometheus.withLegendFormat('{{cluster}} {{job}} {{instance}}'),
+              timeSeries.queryOptions.withTargets([
+                prometheus.new('$datasource', 'rate(prometheus_engine_query_duration_seconds_count{cluster=~"$cluster",job=~"$job",instance=~"$instance",slice="inner_eval"}[5m])')
+                + prometheus.withLegendFormat('{{cluster}} {{job}} {{instance}}'),
               ])
             else
-              grafonnetTimeSeries.queryOptions.withTargets([
-                grafonnetPrometheus.new('$datasource', 'rate(prometheus_engine_query_duration_seconds_count{job=~"$job",instance=~"$instance",slice="inner_eval"}[5m])')
-                + grafonnetPrometheus.withLegendFormat('{{job}} {{instance}}'),
+              timeSeries.queryOptions.withTargets([
+                prometheus.new('$datasource', 'rate(prometheus_engine_query_duration_seconds_count{job=~"$job",instance=~"$instance",slice="inner_eval"}[5m])')
+                + prometheus.withLegendFormat('{{job}} {{instance}}'),
               ])
           )
-          + grafonnetTimeSeries.standardOptions.withMin(0)
-          + grafonnetTimeSeries.standardOptions.withUnit('short'),
+          + timeSeries.standardOptions.withMin(0)
+          + timeSeries.standardOptions.withUnit('short'),
 
-          grafonnetTimeSeries.new('Stage Duration')
-          + grafonnetTimeSeries.fieldConfig.defaults.custom.withFillOpacity(100)
-          + grafonnetTimeSeries.fieldConfig.defaults.custom.withShowPoints('never')
-          + grafonnetTimeSeries.fieldConfig.defaults.custom.stacking.withMode('normal')
-          + grafonnetTimeSeries.gridPos.withH(7)
-          + grafonnetTimeSeries.gridPos.withW(12)
-          + grafonnetTimeSeries.options.tooltip.withMode('multi')
-          + grafonnetTimeSeries.options.tooltip.withSort('desc')
-          + grafonnetTimeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+          timeSeries.new('Stage Duration')
+          + timeSeries.fieldConfig.defaults.custom.withFillOpacity(100)
+          + timeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+          + timeSeries.fieldConfig.defaults.custom.stacking.withMode('normal')
+          + timeSeries.gridPos.withH(7)
+          + timeSeries.gridPos.withW(12)
+          + timeSeries.options.tooltip.withMode('multi')
+          + timeSeries.options.tooltip.withSort('desc')
+          + timeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
           + (
             if showMultiCluster then
-              grafonnetTimeSeries.queryOptions.withTargets([
-                grafonnetPrometheus.new('$datasource', 'max by (slice) (prometheus_engine_query_duration_seconds{quantile="0.9",cluster=~"$cluster", job=~"$job",instance=~"$instance"}) * 1e3')
-                + grafonnetPrometheus.withLegendFormat('{{slice}}'),
+              timeSeries.queryOptions.withTargets([
+                prometheus.new('$datasource', 'max by (slice) (prometheus_engine_query_duration_seconds{quantile="0.9",cluster=~"$cluster", job=~"$job",instance=~"$instance"}) * 1e3')
+                + prometheus.withLegendFormat('{{slice}}'),
               ])
             else
-              grafonnetTimeSeries.queryOptions.withTargets([
-                grafonnetPrometheus.new('$datasource', 'max by (slice) (prometheus_engine_query_duration_seconds{quantile="0.9",job=~"$job",instance=~"$instance"}) * 1e3')
-                + grafonnetPrometheus.withLegendFormat('{{slice}}'),
+              timeSeries.queryOptions.withTargets([
+                prometheus.new('$datasource', 'max by (slice) (prometheus_engine_query_duration_seconds{quantile="0.9",job=~"$job",instance=~"$instance"}) * 1e3')
+                + prometheus.withLegendFormat('{{slice}}'),
               ])
           )
-          + grafonnetTimeSeries.standardOptions.withMin(0)
-          + grafonnetTimeSeries.standardOptions.withUnit('ms'),
+          + timeSeries.standardOptions.withMin(0)
+          + timeSeries.standardOptions.withUnit('ms'),
         ])
       ),
     // Remote write specific dashboard.
     'prometheus-remote-write.json':
       local timestampComparison =
-        graphPanel.new(
-          'Highest Timestamp In vs. Highest Timestamp Sent',
-          datasource='$datasource',
-          span=6,
-        )
-        .addTarget(prometheus.target(
-          |||
-            (
-              prometheus_remote_storage_highest_timestamp_in_seconds{cluster=~"$cluster", instance=~"$instance"} 
-            -  
-              ignoring(remote_name, url) group_right(instance) (prometheus_remote_storage_queue_highest_sent_timestamp_seconds{cluster=~"$cluster", instance=~"$instance", url=~"$url"} != 0)
-            )
-          |||,
-          legendFormat='{{cluster}}:{{instance}} {{remote_name}}:{{url}}',
-        ));
+        timeSeries.new('Highest Timestamp In vs. Highest Timestamp Sent')
+        + timeSeries.fieldConfig.defaults.custom.withFillOpacity(10)
+        + timeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+        + timeSeries.gridPos.withH(7)
+        + timeSeries.gridPos.withW(12)
+        + timeSeries.options.tooltip.withMode('multi')
+        + timeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+        + timeSeries.queryOptions.withTargets([
+          prometheus.new('$datasource',
+                         |||
+                           (
+                             prometheus_remote_storage_highest_timestamp_in_seconds{cluster=~"$cluster", instance=~"$instance"} 
+                           -  
+                             ignoring(remote_name, url) group_right(instance) (prometheus_remote_storage_queue_highest_sent_timestamp_seconds{cluster=~"$cluster", instance=~"$instance", url=~"$url"} != 0)
+                           )
+                         |||)
+          + prometheus.withLegendFormat('{{cluster}}:{{instance}} {{remote_name}}:{{url}}'),
+        ])
+        + timeSeries.standardOptions.withUnit('short');
 
       local timestampComparisonRate =
-        graphPanel.new(
-          'Rate[5m]',
-          datasource='$datasource',
-          span=6,
-        )
-        .addTarget(prometheus.target(
-          |||
-            clamp_min(
-              rate(prometheus_remote_storage_highest_timestamp_in_seconds{cluster=~"$cluster", instance=~"$instance"}[5m])  
-            - 
-              ignoring (remote_name, url) group_right(instance) rate(prometheus_remote_storage_queue_highest_sent_timestamp_seconds{cluster=~"$cluster", instance=~"$instance", url=~"$url"}[5m])
-            , 0)
-          |||,
-          legendFormat='{{cluster}}:{{instance}} {{remote_name}}:{{url}}',
-        ));
+        timeSeries.new('Rate[5m]')
+        + timeSeries.fieldConfig.defaults.custom.withFillOpacity(10)
+        + timeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+        + timeSeries.gridPos.withH(7)
+        + timeSeries.gridPos.withW(12)
+        + timeSeries.options.tooltip.withMode('multi')
+        + timeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+        + timeSeries.queryOptions.withTargets([
+          prometheus.new('$datasource',
+                         |||
+                           clamp_min(
+                             rate(prometheus_remote_storage_highest_timestamp_in_seconds{cluster=~"$cluster", instance=~"$instance"}[5m])  
+                           - 
+                             ignoring (remote_name, url) group_right(instance) rate(prometheus_remote_storage_queue_highest_sent_timestamp_seconds{cluster=~"$cluster", instance=~"$instance", url=~"$url"}[5m])
+                           , 0)
+                         |||)
+          + prometheus.withLegendFormat('{{cluster}}:{{instance}} {{remote_name}}:{{url}}'),
+        ])
+        + timeSeries.standardOptions.withUnit('short');
 
       local samplesRate =
-        graphPanel.new(
-          'Rate, in vs. succeeded or dropped [5m]',
-          datasource='$datasource',
-          span=12,
-        )
-        .addTarget(prometheus.target(
-          |||
-            rate(
-              prometheus_remote_storage_samples_in_total{cluster=~"$cluster", instance=~"$instance"}[5m])
-            - 
-              ignoring(remote_name, url) group_right(instance) (rate(prometheus_remote_storage_succeeded_samples_total{cluster=~"$cluster", instance=~"$instance", url=~"$url"}[5m]) or rate(prometheus_remote_storage_samples_total{cluster=~"$cluster", instance=~"$instance", url=~"$url"}[5m]))
-            - 
-              (rate(prometheus_remote_storage_dropped_samples_total{cluster=~"$cluster", instance=~"$instance", url=~"$url"}[5m]) or rate(prometheus_remote_storage_samples_dropped_total{cluster=~"$cluster", instance=~"$instance", url=~"$url"}[5m]))
-          |||,
-          legendFormat='{{cluster}}:{{instance}} {{remote_name}}:{{url}}'
-        ));
+        timeSeries.new('Rate, in vs. succeeded or dropped [5m]')
+        + timeSeries.fieldConfig.defaults.custom.withFillOpacity(10)
+        + timeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+        + timeSeries.gridPos.withH(7)
+        + timeSeries.gridPos.withW(24)
+        + timeSeries.options.tooltip.withMode('multi')
+        + timeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+        + timeSeries.queryOptions.withTargets([
+          prometheus.new('$datasource',
+                         |||
+                           rate(
+                             prometheus_remote_storage_samples_in_total{cluster=~"$cluster", instance=~"$instance"}[5m])
+                           - 
+                             ignoring(remote_name, url) group_right(instance) (rate(prometheus_remote_storage_succeeded_samples_total{cluster=~"$cluster", instance=~"$instance", url=~"$url"}[5m]) or rate(prometheus_remote_storage_samples_total{cluster=~"$cluster", instance=~"$instance", url=~"$url"}[5m]))
+                           - 
+                             (rate(prometheus_remote_storage_dropped_samples_total{cluster=~"$cluster", instance=~"$instance", url=~"$url"}[5m]) or rate(prometheus_remote_storage_samples_dropped_total{cluster=~"$cluster", instance=~"$instance", url=~"$url"}[5m]))
+                         |||)
+          + prometheus.withLegendFormat('{{cluster}}:{{instance}} {{remote_name}}:{{url}}'),
+        ])
+        + timeSeries.standardOptions.withUnit('short');
 
       local currentShards =
-        graphPanel.new(
-          'Current Shards',
-          datasource='$datasource',
-          span=12,
-          min_span=6,
-        )
-        .addTarget(prometheus.target(
-          'prometheus_remote_storage_shards{cluster=~"$cluster", instance=~"$instance", url=~"$url"}',
-          legendFormat='{{cluster}}:{{instance}} {{remote_name}}:{{url}}'
-        ));
+        timeSeries.new('Current Shards')
+        + timeSeries.fieldConfig.defaults.custom.withFillOpacity(10)
+        + timeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+        + timeSeries.gridPos.withH(7)
+        + timeSeries.gridPos.withW(24)
+        + timeSeries.options.tooltip.withMode('multi')
+        + timeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+        + timeSeries.queryOptions.withTargets([
+          prometheus.new('$datasource', 'prometheus_remote_storage_shards{cluster=~"$cluster", instance=~"$instance", url=~"$url"}')
+          + prometheus.withLegendFormat('{{cluster}}:{{instance}} {{remote_name}}:{{url}}'),
+        ])
+        + timeSeries.standardOptions.withUnit('short');
 
       local maxShards =
-        graphPanel.new(
-          'Max Shards',
-          datasource='$datasource',
-          span=4,
-        )
-        .addTarget(prometheus.target(
-          'prometheus_remote_storage_shards_max{cluster=~"$cluster", instance=~"$instance", url=~"$url"}',
-          legendFormat='{{cluster}}:{{instance}} {{remote_name}}:{{url}}'
-        ));
+        timeSeries.new('Max Shards')
+        + timeSeries.fieldConfig.defaults.custom.withFillOpacity(10)
+        + timeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+        + timeSeries.gridPos.withH(7)
+        + timeSeries.gridPos.withW(8)
+        + timeSeries.options.tooltip.withMode('multi')
+        + timeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+        + timeSeries.queryOptions.withTargets([
+          prometheus.new('$datasource', 'prometheus_remote_storage_shards_max{cluster=~"$cluster", instance=~"$instance", url=~"$url"}')
+          + prometheus.withLegendFormat('{{cluster}}:{{instance}} {{remote_name}}:{{url}}'),
+        ])
+        + timeSeries.standardOptions.withUnit('short');
 
       local minShards =
-        graphPanel.new(
-          'Min Shards',
-          datasource='$datasource',
-          span=4,
-        )
-        .addTarget(prometheus.target(
-          'prometheus_remote_storage_shards_min{cluster=~"$cluster", instance=~"$instance", url=~"$url"}',
-          legendFormat='{{cluster}}:{{instance}} {{remote_name}}:{{url}}'
-        ));
+        timeSeries.new('Min Shards')
+        + timeSeries.fieldConfig.defaults.custom.withFillOpacity(10)
+        + timeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+        + timeSeries.gridPos.withH(7)
+        + timeSeries.gridPos.withW(8)
+        + timeSeries.options.tooltip.withMode('multi')
+        + timeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+        + timeSeries.queryOptions.withTargets([
+          prometheus.new('$datasource', 'prometheus_remote_storage_shards_min{cluster=~"$cluster", instance=~"$instance", url=~"$url"}')
+          + prometheus.withLegendFormat('{{cluster}}:{{instance}} {{remote_name}}:{{url}}'),
+        ])
+        + timeSeries.standardOptions.withUnit('short');
 
       local desiredShards =
-        graphPanel.new(
-          'Desired Shards',
-          datasource='$datasource',
-          span=4,
-        )
-        .addTarget(prometheus.target(
-          'prometheus_remote_storage_shards_desired{cluster=~"$cluster", instance=~"$instance", url=~"$url"}',
-          legendFormat='{{cluster}}:{{instance}} {{remote_name}}:{{url}}'
-        ));
+        timeSeries.new('Desired Shards')
+        + timeSeries.fieldConfig.defaults.custom.withFillOpacity(10)
+        + timeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+        + timeSeries.gridPos.withH(7)
+        + timeSeries.gridPos.withW(8)
+        + timeSeries.options.tooltip.withMode('multi')
+        + timeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+        + timeSeries.queryOptions.withTargets([
+          prometheus.new('$datasource', 'prometheus_remote_storage_shards_desired{cluster=~"$cluster", instance=~"$instance", url=~"$url"}')
+          + prometheus.withLegendFormat('{{cluster}}:{{instance}} {{remote_name}}:{{url}}'),
+        ])
+        + timeSeries.standardOptions.withUnit('short');
 
       local shardsCapacity =
-        graphPanel.new(
-          'Shard Capacity',
-          datasource='$datasource',
-          span=6,
-        )
-        .addTarget(prometheus.target(
-          'prometheus_remote_storage_shard_capacity{cluster=~"$cluster", instance=~"$instance", url=~"$url"}',
-          legendFormat='{{cluster}}:{{instance}} {{remote_name}}:{{url}}'
-        ));
-
+        timeSeries.new('Shard Capacity')
+        + timeSeries.fieldConfig.defaults.custom.withFillOpacity(10)
+        + timeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+        + timeSeries.gridPos.withH(7)
+        + timeSeries.gridPos.withW(12)
+        + timeSeries.options.tooltip.withMode('multi')
+        + timeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+        + timeSeries.queryOptions.withTargets([
+          prometheus.new('$datasource', 'prometheus_remote_storage_shard_capacity{cluster=~"$cluster", instance=~"$instance", url=~"$url"}')
+          + prometheus.withLegendFormat('{{cluster}}:{{instance}} {{remote_name}}:{{url}}'),
+        ])
+        + timeSeries.standardOptions.withUnit('short');
 
       local pendingSamples =
-        graphPanel.new(
-          'Pending Samples',
-          datasource='$datasource',
-          span=6,
-        )
-        .addTarget(prometheus.target(
-          'prometheus_remote_storage_pending_samples{cluster=~"$cluster", instance=~"$instance", url=~"$url"} or prometheus_remote_storage_samples_pending{cluster=~"$cluster", instance=~"$instance", url=~"$url"}',
-          legendFormat='{{cluster}}:{{instance}} {{remote_name}}:{{url}}'
-        ));
+        timeSeries.new('Pending Samples')
+        + timeSeries.fieldConfig.defaults.custom.withFillOpacity(10)
+        + timeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+        + timeSeries.gridPos.withH(7)
+        + timeSeries.gridPos.withW(12)
+        + timeSeries.options.tooltip.withMode('multi')
+        + timeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+        + timeSeries.queryOptions.withTargets([
+          prometheus.new('$datasource', 'prometheus_remote_storage_pending_samples{cluster=~"$cluster", instance=~"$instance", url=~"$url"} or prometheus_remote_storage_samples_pending{cluster=~"$cluster", instance=~"$instance", url=~"$url"}')
+          + prometheus.withLegendFormat('{{cluster}}:{{instance}} {{remote_name}}:{{url}}'),
+        ])
+        + timeSeries.standardOptions.withUnit('short');
 
       local walSegment =
-        graphPanel.new(
-          'TSDB Current Segment',
-          datasource='$datasource',
-          span=6,
-          formatY1='none',
-        )
-        .addTarget(prometheus.target(
-          'prometheus_tsdb_wal_segment_current{cluster=~"$cluster", instance=~"$instance"}',
-          legendFormat='{{cluster}}:{{instance}}'
-        ));
+        timeSeries.new('TSDB Current Segment')
+        + timeSeries.fieldConfig.defaults.custom.withFillOpacity(10)
+        + timeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+        + timeSeries.gridPos.withH(7)
+        + timeSeries.gridPos.withW(12)
+        + timeSeries.options.tooltip.withMode('multi')
+        + timeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+        + timeSeries.queryOptions.withTargets([
+          prometheus.new('$datasource', 'prometheus_tsdb_wal_segment_current{cluster=~"$cluster", instance=~"$instance"}')
+          + prometheus.withLegendFormat('{{cluster}}:{{instance}}'),
+        ]);
 
       local queueSegment =
-        graphPanel.new(
-          'Remote Write Current Segment',
-          datasource='$datasource',
-          span=6,
-          formatY1='none',
-        )
-        .addTarget(prometheus.target(
-          'prometheus_wal_watcher_current_segment{cluster=~"$cluster", instance=~"$instance"}',
-          legendFormat='{{cluster}}:{{instance}} {{consumer}}'
-        ));
+        timeSeries.new('TSDB Current Segment')
+        + timeSeries.fieldConfig.defaults.custom.withFillOpacity(10)
+        + timeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+        + timeSeries.gridPos.withH(7)
+        + timeSeries.gridPos.withW(12)
+        + timeSeries.options.tooltip.withMode('multi')
+        + timeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+        + timeSeries.queryOptions.withTargets([
+          prometheus.new('$datasource', 'prometheus_wal_watcher_current_segment{cluster=~"$cluster", instance=~"$instance"}')
+          + prometheus.withLegendFormat('{{cluster}}:{{instance}} {{consumer}}'),
+        ]);
 
       local droppedSamples =
-        graphPanel.new(
-          'Dropped Samples',
-          datasource='$datasource',
-          span=3,
-        )
-        .addTarget(prometheus.target(
-          'rate(prometheus_remote_storage_dropped_samples_total{cluster=~"$cluster", instance=~"$instance", url=~"$url"}[5m]) or rate(prometheus_remote_storage_samples_dropped_total{cluster=~"$cluster", instance=~"$instance", url=~"$url"}[5m])',
-          legendFormat='{{cluster}}:{{instance}} {{remote_name}}:{{url}}'
-        ));
+        timeSeries.new('Dropped Samples')
+        + timeSeries.fieldConfig.defaults.custom.withFillOpacity(10)
+        + timeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+        + timeSeries.gridPos.withH(7)
+        + timeSeries.gridPos.withW(6)
+        + timeSeries.options.tooltip.withMode('multi')
+        + timeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+        + timeSeries.queryOptions.withTargets([
+          prometheus.new('$datasource', 'rate(prometheus_remote_storage_dropped_samples_total{cluster=~"$cluster", instance=~"$instance", url=~"$url"}[5m]) or rate(prometheus_remote_storage_samples_dropped_total{cluster=~"$cluster", instance=~"$instance", url=~"$url"}[5m])')
+          + prometheus.withLegendFormat('{{cluster}}:{{instance}} {{remote_name}}:{{url}}'),
+        ])
+        + timeSeries.standardOptions.withUnit('short');
 
       local failedSamples =
-        graphPanel.new(
-          'Failed Samples',
-          datasource='$datasource',
-          span=3,
-        )
-        .addTarget(prometheus.target(
-          'rate(prometheus_remote_storage_failed_samples_total{cluster=~"$cluster", instance=~"$instance", url=~"$url"}[5m]) or rate(prometheus_remote_storage_samples_failed_total{cluster=~"$cluster", instance=~"$instance", url=~"$url"}[5m])',
-          legendFormat='{{cluster}}:{{instance}} {{remote_name}}:{{url}}'
-        ));
+        timeSeries.new('Failed Samples')
+        + timeSeries.fieldConfig.defaults.custom.withFillOpacity(10)
+        + timeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+        + timeSeries.gridPos.withH(7)
+        + timeSeries.gridPos.withW(6)
+        + timeSeries.options.tooltip.withMode('multi')
+        + timeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+        + timeSeries.queryOptions.withTargets([
+          prometheus.new('$datasource', 'rate(prometheus_remote_storage_failed_samples_total{cluster=~"$cluster", instance=~"$instance", url=~"$url"}[5m]) or rate(prometheus_remote_storage_samples_failed_total{cluster=~"$cluster", instance=~"$instance", url=~"$url"}[5m])')
+          + prometheus.withLegendFormat('{{cluster}}:{{instance}} {{remote_name}}:{{url}}'),
+        ])
+        + timeSeries.standardOptions.withUnit('short');
 
       local retriedSamples =
-        graphPanel.new(
-          'Retried Samples',
-          datasource='$datasource',
-          span=3,
-        )
-        .addTarget(prometheus.target(
-          'rate(prometheus_remote_storage_retried_samples_total{cluster=~"$cluster", instance=~"$instance", url=~"$url"}[5m]) or rate(prometheus_remote_storage_samples_retried_total{cluster=~"$cluster", instance=~"$instance", url=~"$url"}[5m])',
-          legendFormat='{{cluster}}:{{instance}} {{remote_name}}:{{url}}'
-        ));
+        timeSeries.new('Retried Samples')
+        + timeSeries.fieldConfig.defaults.custom.withFillOpacity(10)
+        + timeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+        + timeSeries.gridPos.withH(7)
+        + timeSeries.gridPos.withW(6)
+        + timeSeries.options.tooltip.withMode('multi')
+        + timeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+        + timeSeries.queryOptions.withTargets([
+          prometheus.new('$datasource', 'rate(prometheus_remote_storage_retried_samples_total{cluster=~"$cluster", instance=~"$instance", url=~"$url"}[5m]) or rate(prometheus_remote_storage_samples_retried_total{cluster=~"$cluster", instance=~"$instance", url=~"$url"}[5m])')
+          + prometheus.withLegendFormat('{{cluster}}:{{instance}} {{remote_name}}:{{url}}'),
+        ])
+        + timeSeries.standardOptions.withUnit('short');
 
       local enqueueRetries =
-        graphPanel.new(
-          'Enqueue Retries',
-          datasource='$datasource',
-          span=3,
-        )
-        .addTarget(prometheus.target(
-          'rate(prometheus_remote_storage_enqueue_retries_total{cluster=~"$cluster", instance=~"$instance", url=~"$url"}[5m])',
-          legendFormat='{{cluster}}:{{instance}} {{remote_name}}:{{url}}'
-        ));
+        timeSeries.new('Enqueue Retries')
+        + timeSeries.fieldConfig.defaults.custom.withFillOpacity(10)
+        + timeSeries.fieldConfig.defaults.custom.withShowPoints('never')
+        + timeSeries.gridPos.withH(7)
+        + timeSeries.gridPos.withW(6)
+        + timeSeries.options.tooltip.withMode('multi')
+        + timeSeries.queryOptions.withDatasource('prometheus', '${datasource}')
+        + timeSeries.queryOptions.withTargets([
+          prometheus.new('$datasource', 'rate(prometheus_remote_storage_enqueue_retries_total{cluster=~"$cluster", instance=~"$instance", url=~"$url"}[5m])')
+          + prometheus.withLegendFormat('{{cluster}}:{{instance}} {{remote_name}}:{{url}}'),
+        ])
+        + timeSeries.standardOptions.withUnit('short');
 
       dashboard.new(
-        title='%(prefix)sRemote Write' % $._config.grafanaPrometheus,
-        editable=true
+        '%(prefix)sRemote Write' % $._config.grafanaPrometheus
       )
-      .addTemplate(
-        {
-          hide: 0,
-          label: null,
-          name: 'datasource',
-          options: [],
-          query: 'prometheus',
-          refresh: 1,
-          regex: '',
-          type: 'datasource',
-        },
-      )
-      .addTemplate(
-        template.new(
-          'cluster',
-          '$datasource',
-          'label_values(prometheus_build_info, cluster)' % $._config,
-          refresh='time',
-          current={
-            selected: true,
-            text: 'All',
-            value: '$__all',
-          },
-          includeAll=true,
-        )
-      )
-      .addTemplate(
-        template.new(
-          'instance',
-          '$datasource',
-          'label_values(prometheus_build_info{cluster=~"$cluster"}, instance)' % $._config,
-          refresh='time',
-          current={
-            selected: true,
-            text: 'All',
-            value: '$__all',
-          },
-          includeAll=true,
-        )
-      )
-      .addTemplate(
-        template.new(
-          'url',
-          '$datasource',
-          'label_values(prometheus_remote_storage_shards{cluster=~"$cluster", instance=~"$instance"}, url)' % $._config,
-          refresh='time',
-          includeAll=true,
-        )
-      )
-      .addRow(
-        row.new('Timestamps')
-        .addPanel(timestampComparison)
-        .addPanel(timestampComparisonRate)
-      )
-      .addRow(
-        row.new('Samples')
-        .addPanel(samplesRate)
-      )
-      .addRow(
-        row.new(
-          'Shards'
-        )
-        .addPanel(currentShards)
-        .addPanel(maxShards)
-        .addPanel(minShards)
-        .addPanel(desiredShards)
-      )
-      .addRow(
-        row.new('Shard Details')
-        .addPanel(shardsCapacity)
-        .addPanel(pendingSamples)
-      )
-      .addRow(
-        row.new('Segments')
-        .addPanel(walSegment)
-        .addPanel(queueSegment)
-      )
-      .addRow(
-        row.new('Misc. Rates')
-        .addPanel(droppedSamples)
-        .addPanel(failedSamples)
-        .addPanel(retriedSamples)
-        .addPanel(enqueueRetries)
-      ) + {
-        tags: $._config.grafanaPrometheus.tags,
-        refresh: $._config.grafanaPrometheus.refresh,
-      },
+      + dashboard.withTags($._config.grafanaPrometheus.tags)
+      + dashboard.withRefresh($._config.grafanaPrometheus.refresh)
+      + dashboard.withVariables([
+        variable.datasource.new('datasource', 'prometheus')
+        + variable.datasource.generalOptions.withLabel('Datasource'),
+
+        variable.query.new('cluster')
+        + variable.query.withDatasource('prometheus', '${datasource}')
+        + variable.query.queryTypes.withLabelValues('cluster', 'prometheus_build_info')
+        + variable.query.refresh.onTime()
+        + variable.query.selectionOptions.withIncludeAll(true)
+        + variable.query.selectionOptions.withMulti(),
+
+        variable.query.new('instance')
+        + variable.query.withDatasource('prometheus', '${datasource}')
+        + variable.query.queryTypes.withLabelValues('instance', 'prometheus_build_info{cluster=~"$cluster"}')
+        + variable.query.refresh.onTime()
+        + variable.query.selectionOptions.withIncludeAll(true)
+        + variable.query.selectionOptions.withMulti(),
+
+        variable.query.new('url')
+        + variable.query.withDatasource('prometheus', '${datasource}')
+        + variable.query.queryTypes.withLabelValues('url', 'prometheus_remote_storage_shards{cluster=~"$cluster", instance=~"$instance"}')
+        + variable.query.refresh.onTime()
+        + variable.query.selectionOptions.withIncludeAll(true)
+        + variable.query.selectionOptions.withMulti(),
+      ])
+      + dashboard.withPanels(
+        grid.wrapPanels([
+          row.new('Timestamps'),
+          timestampComparison,
+          timestampComparisonRate,
+
+          row.new('Samples'),
+          samplesRate,
+
+          row.new('Shards'),
+          currentShards,
+          maxShards,
+          minShards,
+          desiredShards,
+
+          row.new('Shard Details'),
+          shardsCapacity,
+          pendingSamples,
+
+          row.new('Segments'),
+          walSegment,
+          queueSegment,
+
+          row.new('Misc. Rates'),
+          droppedSamples,
+          failedSamples,
+          retriedSamples,
+          enqueueRetries,
+        ])
+      ),
   },
 }
