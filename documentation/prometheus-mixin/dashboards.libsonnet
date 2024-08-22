@@ -38,7 +38,7 @@ local timeSeries = grafonnet.panel.timeSeries;
              + variable.query.withSort(2)
              + variable.query.queryTypes.withLabelValues('job', 'prometheus_build_info{cluster=~"$cluster"}')
              + variable.query.refresh.onLoad()
-             + variable.query.selectionOptions.withIncludeAll(true, '.+')
+             + variable.query.selectionOptions.withIncludeAll(true)
              + variable.query.selectionOptions.withMulti(),
 
              variable.query.new('instance')
@@ -46,7 +46,7 @@ local timeSeries = grafonnet.panel.timeSeries;
              + variable.query.withSort(2)
              + variable.query.queryTypes.withLabelValues('instance', 'prometheus_build_info{cluster=~"$cluster", job=~"$job"}')
              + variable.query.refresh.onLoad()
-             + variable.query.selectionOptions.withIncludeAll(true, '.+')
+             + variable.query.selectionOptions.withIncludeAll(true)
              + variable.query.selectionOptions.withMulti(),
            ])
          else
@@ -56,7 +56,7 @@ local timeSeries = grafonnet.panel.timeSeries;
              + variable.query.withSort(2)
              + variable.query.queryTypes.withLabelValues('job', 'prometheus_build_info{%(prometheusSelector)s}' % $._config)
              + variable.query.refresh.onLoad()
-             + variable.query.selectionOptions.withIncludeAll(true, '.+')
+             + variable.query.selectionOptions.withIncludeAll(true)
              + variable.query.selectionOptions.withMulti(),
 
              variable.query.new('instance')
@@ -64,7 +64,7 @@ local timeSeries = grafonnet.panel.timeSeries;
              + variable.query.withSort(2)
              + variable.query.queryTypes.withLabelValues('instance', 'prometheus_build_info{job=~"$job"}')
              + variable.query.refresh.onLoad()
-             + variable.query.selectionOptions.withIncludeAll(true, '.+')
+             + variable.query.selectionOptions.withIncludeAll(true)
              + variable.query.selectionOptions.withMulti(),
            ]))
       + dashboard.withPanels(
